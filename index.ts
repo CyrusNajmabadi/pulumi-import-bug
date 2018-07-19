@@ -14,10 +14,11 @@ const slotsTable = new aws.dynamodb.Table('slots-table', {
     writeCapacity: 5
 })
 
+export const slotsTableName = slotsTable.name
+
 const api = new serverless.apigateway.API('api', {
     routes: [
         {method: 'GET', path: '/events', handler: listEvents}
     ]
 })
 
-export const slotsTableName = slotsTable.name

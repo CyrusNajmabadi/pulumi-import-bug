@@ -1,10 +1,11 @@
-import {DocumentClient} from 'aws-sdk/clients/dynamodb'
-import AttributeMap = DocumentClient.AttributeMap;
+import * as dynamodb_typesOnly from 'aws-sdk/clients/dynamodb';
+
 import {slotsTableName} from './index'
+import { dynamodb } from '@pulumi/aws';
 
 type SlotMap = { [key: string]: number };
 
-export type Slot = AttributeMap & {
+export type Slot = dynamodb_typesOnly.DocumentClient.AttributeMap & {
     eventDay: string,
     sortKey: string,
     startAt: string,
@@ -21,8 +22,6 @@ export type Slot = AttributeMap & {
 }
 
 type Slots = Slot[] | undefined
-
-const docClient = new DocumentClient()
 
 const getUpdateExp = (obj: object) => {
     const body = Object
@@ -55,12 +54,20 @@ const getSlotsPerEvents = (slots: Slots) => {
         .sort((a, b) => a.eventDay.localeCompare(b.eventDay))
 }
 
+async function getDocClient() {
+    const DocumentClient = (await import('aws-sdk/clients/dynamodb')).DocumentClient
+    const docClient = new DocumentClient()
+    return docClient;
+}
+
 export const getAllBofEvents = async () => {
+
     const params = {
         TableName: slotsTableName.get(),
         ScanIndexForward: true
     }
 
+    const docClient = await getDocClient();
     const {Items} = await docClient.scan(params).promise()
 
     return getSlotsPerEvents(Items as Slots)
@@ -75,6 +82,7 @@ export const getEventSlots = async (eventDay: string) => {
         }
     }
 
+    const docClient = await getDocClient();
     const {Items} = await docClient.query(params).promise()
 
     return Items
@@ -88,6 +96,7 @@ export const getOneSlot = async (eventDay: string, sortKey: string) => {
         }
     }
 
+    const docClient = await getDocClient();
     const {Item} = await docClient.get(params).promise()
     return Item || {}
 }
@@ -104,6 +113,7 @@ export const updateSlot = async (data: { [key: string]: string }, eventDay: stri
         ReturnValues: 'ALL_NEW'
     }
 
+    const docClient = await getDocClient();
     return await docClient.update(params).promise()
 }
 
@@ -113,6 +123,7 @@ export const getSlotsWithVideo = async () => {
         FilterExpression: 'attribute_exists(uploadAt)'
     }
 
+    const docClient = await getDocClient();
     const {Items} = await docClient.scan(params).promise()
     return Items.sort((a: Slot, b: Slot) => b.uploadAt.localeCompare(a.uploadAt))
 }
